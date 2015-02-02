@@ -7,8 +7,7 @@ int main() {
 	// Adjustable input line length
 	int input_line_length = 100;
 	char input[input_line_length]; // 100 as per shell specs. This can be upped if necessary.
-	char **arguments; // My super janky vector
-	arguments = malloc(0);
+	char **arguments = NULL; // My super janky vector
 	// Main shell loop
 	do {
 		// Read in a line.
@@ -23,26 +22,30 @@ int main() {
 		else {
 			int word_size = 0;
 			char *tok;
-			bool to_free = false;
+			int to_free = 0; // I miss bools
 			tok = strtok(input, " ");
 			while (tok) {
 				printf("Token: %s\n", tok);
 				// We've found our word
-				//if (strcmp(tok, "|") && strcmp(tok, ">") && strcmp(tok, "<")) {
-				//	printf("blah\n");
-				//}
+				if (!strcmp(tok, "|")  || !strcmp(tok, ">") || !strcmp(tok, "<")) {
+					printf("pipe!\n");
+					// 1. Run exec
+					// 2. Clear arguments
+					// 3. pipe exec's output back into arguments
+					// 4. Carry on
+				}
 				// Add another element to arguments
 				arguments = realloc(arguments, sizeof(char*) * (word_size + 1));
 				// Adding tok to the end of arguments
 				arguments[word_size] = malloc(sizeof(char) * strlen(tok));
-				to_free = true;
 				strcpy(arguments[word_size], tok);
 				word_size++;
 				// Finding next token
 				tok = strtok(NULL, " ");
 			}
-			if (to_free) {
+			if (arguments) {
 				free(arguments);
+				arguments = NULL;
 			}
 		}
 		// Example ls. Note the final NULL argument and the duplicated binary path
