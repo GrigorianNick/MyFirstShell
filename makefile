@@ -1,2 +1,2 @@
 all:
-	gcc shell.c -o msh
+	gcc -g shell.c -o msh
