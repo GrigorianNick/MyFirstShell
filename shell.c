@@ -12,6 +12,7 @@ int main() {
 	do {
 		// Read in a line.
 		fgets(input, input_line_length, stdin); // Remember, it also reads in \n
+		input[strcspn(input, "\n")] = '\0'; // Stripping the \n, since it does funky things to execv
 		// Enforcing input length limit
 		if (strlen(input) > input_line_length) {
 			printf("Error: Input is too long.\n");
@@ -22,10 +23,8 @@ int main() {
 		else {
 			int word_size = 0;
 			char *tok;
-			int to_free = 0; // I miss bools
 			tok = strtok(input, " ");
 			while (tok) {
-				printf("Token: %s\n", tok);
 				// We've found our word
 				if (!strcmp(tok, "|")  || !strcmp(tok, ">") || !strcmp(tok, "<")) {
 					printf("pipe!\n");
@@ -35,21 +34,21 @@ int main() {
 					// 4. Carry on
 				}
 				// Add another element to arguments
-				arguments = realloc(arguments, sizeof(char*) * (word_size + 1));
-				// Adding tok to the end of arguments
-				arguments[word_size] = malloc(sizeof(char) * strlen(tok));
-				strcpy(arguments[word_size], tok);
 				word_size++;
+				arguments = (char **)realloc(arguments, sizeof(char*) * (word_size));
+				// Adding tok to the end of arguments
+				arguments[word_size - 1] = (char *)malloc(sizeof(char) * strlen(tok));
+				strcpy(arguments[word_size - 1], tok);
 				// Finding next token
 				tok = strtok(NULL, " ");
 			}
+			execv(arguments[0], arguments);
+			printf("tried it\n");
 			if (arguments) {
 				free(arguments);
 				arguments = NULL;
 			}
 		}
-		// Example ls. Note the final NULL argument and the duplicated binary path
-		//execl("/bin/ls", "/bin/ls", "/home/nick/MyFirstShell", NULL);
 	} while (strcmp(input, "exit\n")); // Exit command
 	return 0;
 }
