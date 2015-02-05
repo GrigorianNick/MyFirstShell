@@ -23,8 +23,9 @@ Modifications:
 
 int main() {
 	// Adjustable input line length
-	int input_line_length = 100;
-	char input[input_line_length]; // 100 as per shell specs. This can be upped if necessary.
+	size_t input_line_length = 100;
+	ssize_t read;
+	char *input;
 	char **arguments = NULL; // My super janky vector
 	char **append = NULL; // A vector for piping
 	char cwd[1024]; // Current working directory
@@ -36,14 +37,7 @@ int main() {
 	}
 	strcat(cwd, "/");
 	// Main shell loop
-	do {
-		printf("=> "); // Little bit of pazzaz
-		// Read in a line.
-		if (!fgets(input, input_line_length, stdin)) { // Remember, it also reads in \n
-			fgets(input, input_line_length, stdin);
-			printf("Done!\n");
-			break;
-		}
+	while ((read = getline(&input, &input_line_length, stdin)) != -1) {
 		input[strcspn(input, "\n")] = '\0'; // Stripping the \n, since it does funky things to execv
 		// Enforcing input length limit
 		if (strlen(input) > input_line_length) {
@@ -53,12 +47,12 @@ int main() {
 			while ((c = fgetc(stdin)) != EOF && c != '\n');
 		}
 		else {
+			// Number of args in current executable
 			int word_size = 0;
 			int append_size = 0;
 			char *tok;
 			tok = strtok(input, " ");
 			while (tok) {
-				printf("token: %s\n", tok);
 				if (!strcmp(tok, "exit")) {
 					if (append) {
 						free(append);
@@ -139,7 +133,6 @@ int main() {
 							free(arguments);
 							arguments = NULL;
 						}
-						printf("buff: %s\n", buff);
 						FILE * destination = fopen(target, "w");
 						if (destination) {
 							fwrite(buff, 1, sizeof(char) * strlen(buff), destination);
@@ -147,7 +140,6 @@ int main() {
 						}
 						break;
 					}
-					
 
 					pid_t pid;
 					int Pipe[2];
@@ -260,6 +252,6 @@ int main() {
 				}
 			}
 		}
-	} while (strcmp(input, "exit")); // Exit command
+	}
 	return 0;
 }
