@@ -5,6 +5,7 @@
 
 int run_program(char *input) {
 	if (!strcmp(input, "")) {
+		printf("doh!\n");
 		return 0;
 	}
 	int Pipe[2];
@@ -31,15 +32,26 @@ int run_program(char *input) {
 			strcpy(curr, "");
 		}
 		else if (!strcmp(tok, "<")) {
+			tok = strtok(NULL, " ");
+			FILE * fp;
+			fp = fopen(tok, "r");
+			char c[1024];
+			while (fgets(c, sizeof(c), fp)) {
+				c[strcspn(c, "\n")] = '\0'; // Stripping the newline
+				strcat(curr, c);
+				strcat(curr, " ");
+			}
 			last_pipe = '<';
-			strcat(lag, curr);
-			strcat(lag, " ");
-			strcpy(curr, "");
 		}
-		strcat(curr, tok);
-		strcat(curr, " ");
+		if (last_pipe != '<') {
+			strcat(curr, tok);
+			strcat(curr, " ");
+			last_pipe = '0';
+		}
 		tok = strtok(NULL, " ");
 	}
+
+	
 
 	char ** args = NULL;
 	int args_size = 0;
@@ -75,7 +87,6 @@ int run_program(char *input) {
 	else if (pid == 0) { // Child
 		close(Pipe[0]);
 		dup2(Pipe[1], 1);
-		// See if we're being piped anything else need to look at anything else
 		run_program(lag); // Down the rabbit hole we go!
 	}
 	else { // Parent
@@ -83,9 +94,37 @@ int run_program(char *input) {
 		dup2(Pipe[0], 0);
 		wait(&status);
 		if(!status) { // Child exited fine, so we're good to go
-			execv(args[0], args);
+			perror("Child status");
+			if (last_pipe == '<') {
+				char read_line[1024];
+				char read_total[1024];
+				strcpy(read_total, "");
+				while(fgets(read_line, sizeof(read_line), stdin)) {
+					read_line[strcspn(read_line, "\n")] = '\0';
+					strcat(read_total, read_line);
+					strcat(read_total, " ");
+				}
+				printf("%s\n", read_total);
+			}
+			else if (last_pipe == '>') {
+				perror("Writing thingy");
+				FILE * fp = fopen(args[0], "w+");
+				char read_line[1024];
+				char read_total[1024];
+				strcpy(read_total, "");
+				while(fgets(read_line, sizeof(read_line), stdin)) {
+					read_line[strcspn(read_line, "\n")] = '\0';
+					strcat(read_total, read_line);
+					strcat(read_total, " ");
+				}
+				fwrite(read_total, 1, strlen(read_total), fp);
+			}
+			else {
+				execv(args[0], args);
+			}
 		}
 		else {
+			perror( "Child status:" );
 			exit(-1);
 		}
 	}
@@ -93,7 +132,9 @@ int run_program(char *input) {
 
 int main() {
 	char input[1024];
-	strcpy(input, "/bin/ls /home/nick | /bin/grep D | /bin/grep o");
+	strcpy(input, "/bin/ls /home/nick | /bin/grep D | /bin/grep o | /bin/grep t");
 	//strcpy(input, "/bin/ls /home/nick");
+	strcpy(input, "/bin/ls < /home/nick/MyFirstShell/input | /bin/grep D");
+	strcpy(input, "/bin/ls /home/nick > /home/nick/test");
 	run_program(input);
 }
