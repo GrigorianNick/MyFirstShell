@@ -5,7 +5,6 @@
 
 int run_program(char *input) {
 	if (!strcmp(input, "")) {
-		printf("doh!\n");
 		return 0;
 	}
 	int Pipe[2];
@@ -46,7 +45,7 @@ int run_program(char *input) {
 		if (last_pipe != '<') {
 			strcat(curr, tok);
 			strcat(curr, " ");
-			last_pipe = '0';
+			//last_pipe = '0';
 		}
 		tok = strtok(NULL, " ");
 	}
@@ -70,6 +69,27 @@ int run_program(char *input) {
 	args_size++;
 	args = realloc(args, sizeof(char*));
 	args[args_size - 1] = NULL;
+	// Adding relative pathing to args[0], which is either a command or a file
+	if (args[0][0] != '/') {
+		char cwd[1024];
+		// did cwd error out?
+		if (!getcwd(cwd, sizeof(cwd))) {
+			perror( "Unable to get cwd!" );
+			exit(-1);
+		}
+		char temp[1024];
+		strcpy(temp, cwd);
+		strcat(temp, "/");
+		strcat(temp, args[0]);
+		args[0] = realloc(args[0], sizeof(char) * strlen(temp));
+		strcpy(args[0], temp);
+	}
+
+	/*int i;
+	for (i = 0; i < args_size; i++) {
+		printf("args: %s\n", args[0]);
+	}
+	printf("last_pipe: %c\n============\n", last_pipe);*/
 
 	// Set up pipe
 	if (pipe(Pipe) == -1) {
@@ -132,9 +152,24 @@ int run_program(char *input) {
 
 int main() {
 	char input[1024];
-	strcpy(input, "/bin/ls /home/nick | /bin/grep D | /bin/grep o | /bin/grep t");
-	//strcpy(input, "/bin/ls /home/nick");
-	strcpy(input, "/bin/ls < /home/nick/MyFirstShell/input | /bin/grep D");
-	strcpy(input, "/bin/ls /home/nick > /home/nick/test");
-	run_program(input);
+	char read_line[1024];
+	int orig_stdin = dup(0);
+	size_t n;// = sizeof(input);
+	printf("=> ");
+	while(1) {
+		if (fgets(input, sizeof(input), stdin) == NULL) {
+			break;
+		}
+		input[strcspn(input, "\n")] = '\0';
+		printf("fgets: %s\n", input);
+		if (!strcmp(input, "exit")) {
+			break;
+		}
+		printf("running program");
+		run_program(input);
+		printf("finished running program");
+		fgets(read_line, sizeof(read_line), stdin);
+		printf("read_line: %s\n", read_line);
+		printf("=> ");
+	}
 }
