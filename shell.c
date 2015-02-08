@@ -1,3 +1,24 @@
+/*
+
+My Simple Shell
+
+Author: Nicholas Grigorian
+Computing ID: ngg3vm
+
+The following code implements a simple shell, as specified int he hw1 assignment.
+
+To compile: `make`
+
+Modifications:
+	Feb 1 - Created project
+	Feb 2 - Added tokenization
+	Feb 3 - Added execv functionality
+	Feb 4/5 - Added piping functionality
+	Feb 6 - Restructured project
+	Feb 7 - Streamlined project
+	Feb 8 - Debugged user input
+*/
+
 #include <stdio.h> // Needed for stdin/stdout
 #include <string.h> // Needed for string manipulations, esp stktok
 #include <stdlib.h> // Needed for forking and pipe support
