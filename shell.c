@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
+#include <stdio.h> // Needed for stdin/stdout
+#include <string.h> // Needed for string manipulations, esp stktok
+#include <stdlib.h> // Needed for forking and pipe support
 
 int run_program(char *input) {
 	if (!strcmp(input, "")) {
@@ -16,6 +15,7 @@ int run_program(char *input) {
 	strcpy(curr, "");
 	pid_t pid;
 	
+	// Build the execv and run_program arguments
 	tok = strtok(input, " ");
 	while(tok) {
 		if (!strcmp(tok, "|")) {
@@ -30,6 +30,7 @@ int run_program(char *input) {
 			strcat(lag, " ");
 			strcpy(curr, "");
 		}
+		// substitute the "< file" with the file's contents
 		else if (!strcmp(tok, "<")) {
 			tok = strtok(NULL, " ");
 			FILE * fp;
@@ -42,10 +43,10 @@ int run_program(char *input) {
 			}
 			last_pipe = '<';
 		}
+		// Since this command is substituted adn appended to the previous one, act as if we were moving onto the next command.
 		if (last_pipe != '<') {
 			strcat(curr, tok);
 			strcat(curr, " ");
-			//last_pipe = '0';
 		}
 		tok = strtok(NULL, " ");
 	}
@@ -54,7 +55,7 @@ int run_program(char *input) {
 
 	char ** args = NULL;
 	int args_size = 0;
-	// Building args
+	// Building args for execv
 	tok = strtok(curr, " ");
 	while(tok) {
 		if (strcmp(tok, "<") && strcmp(tok, ">") && strcmp(tok, "|")) {
@@ -84,12 +85,6 @@ int run_program(char *input) {
 		args[0] = realloc(args[0], sizeof(char) * strlen(temp));
 		strcpy(args[0], temp);
 	}
-
-	/*int i;
-	for (i = 0; i < args_size; i++) {
-		printf("args: %s\n", args[0]);
-	}
-	printf("last_pipe: %c\n============\n", last_pipe);*/
 
 	// Set up pipe
 	if (pipe(Pipe) == -1) {
@@ -126,8 +121,8 @@ int run_program(char *input) {
 				}
 				printf("%s\n", read_total);
 			}
+			// The last pipe was >, so we're writing to an output file and then quitting.
 			else if (last_pipe == '>') {
-				perror("Writing thingy");
 				FILE * fp = fopen(args[0], "w+");
 				char read_line[1024];
 				char read_total[1024];
@@ -138,13 +133,16 @@ int run_program(char *input) {
 					strcat(read_total, " ");
 				}
 				fwrite(read_total, 1, strlen(read_total), fp);
+				exit(-1);
 			}
 			else {
 				execv(args[0], args);
+				perror( "Execv failed!" ); // We should never see this.
+				exit(-1);
 			}
 		}
 		else {
-			perror( "Child status:" );
+			perror( "Child status" );
 			exit(-1);
 		}
 	}
@@ -154,22 +152,34 @@ int main() {
 	char input[1024];
 	char read_line[1024];
 	int orig_stdin = dup(0);
-	size_t n;// = sizeof(input);
+	int orig_stdout = dup(1);
+	int Pipe[2];
+	int status;
+	pid_t pid;
+	// Adding some pazzaz
 	printf("=> ");
+	// Main loop
 	while(1) {
+		// In case fgets fails, we leave
 		if (fgets(input, sizeof(input), stdin) == NULL) {
 			break;
 		}
-		input[strcspn(input, "\n")] = '\0';
-		printf("fgets: %s\n", input);
+		input[strcspn(input, "\n")] = '\0'; // Stripping newline char from fgets
+		// Special exit command is processed by us, not the system.
 		if (!strcmp(input, "exit")) {
 			break;
 		}
-		printf("running program");
-		run_program(input);
-		printf("finished running program");
-		fgets(read_line, sizeof(read_line), stdin);
-		printf("read_line: %s\n", read_line);
-		printf("=> ");
+		// Need to fork, otherwise the execv will force us to quit after a single round.
+		pid = fork();
+		if (pid == 0) { //Child
+			run_program(input);
+			pipe(Pipe);
+			close(0);
+			dup2(Pipe[1], 1);
+		}
+		else { // Parent
+			wait(&status); // Wait on child to avoid race conditions.
+			printf("=> ");
+		}
 	}
 }
